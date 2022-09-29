@@ -352,6 +352,8 @@ class Map_Obj:
             " ; ": (36, 36, 36),  # blackish
             " S ": (255, 0, 255),  # magenta
             " G ": (0, 128, 255),  # cyan
+            " P ": (36, 211, 33), # green
+            " E ": (211, 205, 33), # yellow
         }
         # Go through image and set pixel color for every position
         for y in range(height):
