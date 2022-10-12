@@ -141,11 +141,14 @@ class MinimaxAgent(MultiAgentSearchAgent):
         """
         "*** YOUR CODE HERE ***"
 
+        # Initialize bestScore to negative infinity
         bestScore = -float('inf')
         bestAction = None
         for action in gameState.getLegalActions(0):
             successorGameState = gameState.generateSuccessor(0, action)
             successorScore = self.minValue(successorGameState, 1, 0)
+
+            # Check if this state is better than the best state so far
             if successorScore > bestScore:
                 bestScore = successorScore
                 bestAction = action
@@ -156,10 +159,13 @@ class MinimaxAgent(MultiAgentSearchAgent):
         if currentDepth == self.depth or gameState.isWin() or gameState.isLose():
             return self.evaluationFunction(gameState)
 
+        # Initialize bestScore to negative infinity
         bestScore = -float('inf')
         for action in gameState.getLegalActions(0):
             successorGameState = gameState.generateSuccessor(0, action)
             successorScore = self.minValue(successorGameState, 1, currentDepth)
+
+            # Check if this state is better than the best state so far
             if successorScore > bestScore:
                 bestScore = successorScore
 
@@ -169,13 +175,18 @@ class MinimaxAgent(MultiAgentSearchAgent):
         if gameState.isWin() or gameState.isLose():
             return self.evaluationFunction(gameState)
 
+        # Initialize bestScore to positive infinity
         bestScore = float('inf')
         for action in gameState.getLegalActions(agentIndex):
             successorGameState = gameState.generateSuccessor(agentIndex, action)
+
+            # If this is the last ghost, call maxValue to give Pacman the next move
             if agentIndex == gameState.getNumAgents() - 1:
                 successorScore = self.maxValue(successorGameState, currentDepth + 1)
             else:
                 successorScore = self.minValue(successorGameState, agentIndex + 1, currentDepth)
+
+            # Check if this state is better than the best state so far
             if successorScore < bestScore:
                 bestScore = successorScore
 
@@ -193,9 +204,15 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
         Returns the minimax action using self.depth and self.evaluationFunction
         """
         "*** YOUR CODE HERE ***"
+
+        # Same idea as MinimaxAgent, but with alpha-beta pruning
+
         bestAction = None
         bestScore = -float('inf')
+
+        # Initialize alpha to negative infinity
         alpha = -float('inf')
+
         for action in gameState.getLegalActions(0):
             successorGameState = gameState.generateSuccessor(0, action)
             successorScore = self.minValue(successorGameState, 1, alpha)
@@ -204,6 +221,7 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
                 bestAction = action
                 bestScore = successorScore
 
+            # Update alpha to enable pruning
             if bestScore > alpha:
                 alpha = bestScore
 
@@ -222,9 +240,11 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
             if successorScore > bestScore:
                 bestScore = successorScore
                
+            # Update alpha to enable pruning
             if bestScore > alpha:
                 alpha = bestScore
 
+            # Prune if possible
             if beta < alpha:
                 break
 
@@ -245,9 +265,11 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
             if successorScore < bestScore:
                 bestScore = successorScore
 
+            # Update beta to enable pruning
             if bestScore < beta:
                 beta = bestScore
 
+            # Prune if possible
             if beta < alpha:
                 break
 
