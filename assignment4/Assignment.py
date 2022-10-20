@@ -3,7 +3,7 @@
 # Updated by Xavier Sánchez Díaz
 
 import copy
-from itertools import product as prod
+from itertools import filterfalse, product as prod
 
 
 class CSP:
@@ -78,8 +78,7 @@ class CSP:
         """
         return [(i, var) for i in self.constraints[var]]
 
-    def add_constraint_one_way(self, i: str, j: str,
-                               filter_function: callable):
+    def add_constraint_one_way(self, i: str, j: str, filter_function: callable):
         """Add a new constraint between variables 'i' and 'j'. Legal
         values are specified by supplying a function 'filter_function',
         that should return True for legal value pairs, and False for
@@ -105,15 +104,16 @@ class CSP:
             # First, get a list of all possible pairs of values
             # between variables i and j
             self.constraints[i][j] = self.get_all_possible_pairs(
-                                        self.domains[i],
-                                        self.domains[j])
+                self.domains[i], self.domains[j]
+            )
 
         # Next, filter this list of value pairs through the function
         # 'filter_function', so that only the legal value pairs remain
-        self.constraints[i][j] = list(filter(lambda
-                                             value_pair:
-                                             filter_function(*value_pair),
-                                             self.constraints[i][j]))
+        self.constraints[i][j] = list(
+            filter(
+                lambda value_pair: filter_function(*value_pair), self.constraints[i][j]
+            )
+        )
 
     def add_all_different_constraint(self, var_list: list):
         """Add an Alldiff constraint between all of the variables in the
@@ -169,8 +169,36 @@ class CSP:
         assignments and inferences that took place in previous
         iterations of the loop.
         """
-        # TODO: YOUR CODE HERE
-        pass
+
+        x = self.select_unassigned_variable(assignment)
+
+        if not x:
+            return assignment
+
+        for value_x in assignment[x]:
+            valid = True
+
+            # Check if this value for x satisfies all constraints so far
+            for y in self.constraints[x]:
+                # Only check constraint if y already has been assigned
+                if len(assignment[y]) == 1:
+                    value_y = assignment[y][0]
+
+                    # Check constraint
+                    if (value_x, value_y) not in self.constraints[x][y]:
+                        valid = False
+                        break
+
+            if not valid:
+                continue
+
+            new_assignment = copy.deepcopy(assignment)
+            new_assignment[x] = [value_x]
+            solution = self.backtrack(new_assignment)
+            if solution:
+                return solution
+
+        return None
 
     def select_unassigned_variable(self, assignment):
         """The function 'Select-Unassigned-Variable' from the pseudocode
@@ -178,8 +206,10 @@ class CSP:
         in 'assignment' that have not yet been decided, i.e. whose list
         of legal values has a length greater than one.
         """
-        # TODO: YOUR CODE HERE
-        pass
+
+        for (var, values) in assignment.items():
+            if len(values) > 1:
+                return var
 
     def inference(self, assignment, queue):
         """The function 'AC-3' from the pseudocode in the textbook.
@@ -187,8 +217,13 @@ class CSP:
         the lists of legal values for each undecided variable. 'queue'
         is the initial queue of arcs that should be visited.
         """
-        # TODO: YOUR CODE HERE
-        pass
+
+        while len(queue) > 0:
+            arc = queue.pop(0)
+            (i, j) = arc
+            if self.revise(assignment, i, j):
+                for arc in self.get_all_neighboring_arcs(i):
+                    queue.append(arc)
 
     def revise(self, assignment, i, j):
         """The function 'Revise' from the pseudocode in the textbook.
@@ -199,8 +234,16 @@ class CSP:
         between i and j, the value should be deleted from i's list of
         legal values in 'assignment'.
         """
-        # TODO: YOUR CODE HERE
-        pass
+
+        revised = False
+        for x in self.domains[i]:
+            for y in self.domains[j]:
+                if (x, y) in self.constraints[i][j]:
+                    break
+                self.domains[i].remove(x)
+                revised = True
+
+        return revised
 
 
 def create_map_coloring_csp():
@@ -209,10 +252,9 @@ def create_map_coloring_csp():
     develop your code.
     """
     csp = CSP()
-    states = ['WA', 'NT', 'Q', 'NSW', 'V', 'SA', 'T']
-    edges = {'SA': ['WA', 'NT', 'Q', 'NSW', 'V'],
-             'NT': ['WA', 'Q'], 'NSW': ['Q', 'V']}
-    colors = ['red', 'green', 'blue']
+    states = ["WA", "NT", "Q", "NSW", "V", "SA", "T"]
+    edges = {"SA": ["WA", "NT", "Q", "NSW", "V"], "NT": ["WA", "Q"], "NSW": ["Q", "V"]}
+    colors = ["red", "green", "blue"]
     for state in states:
         csp.add_variable(state, colors)
     for state, other_states in edges.items():
@@ -237,28 +279,25 @@ def create_sudoku_csp(filename: str) -> CSP:
         A CSP instance
     """
     csp = CSP()
-    board = list(map(lambda x: x.strip(), open(filename, 'r')))
+    board = list(map(lambda x: x.strip(), open(filename, "r")))
 
     for row in range(9):
         for col in range(9):
-            if board[row][col] == '0':
-                csp.add_variable('%d-%d' % (row, col), list(map(str,
-                                                                range(1, 10))))
+            if board[row][col] == "0":
+                csp.add_variable("%d-%d" % (row, col), list(map(str, range(1, 10))))
             else:
-                csp.add_variable('%d-%d' % (row, col), [board[row][col]])
+                csp.add_variable("%d-%d" % (row, col), [board[row][col]])
 
     for row in range(9):
-        csp.add_all_different_constraint(['%d-%d' % (row, col)
-                                          for col in range(9)])
+        csp.add_all_different_constraint(["%d-%d" % (row, col) for col in range(9)])
     for col in range(9):
-        csp.add_all_different_constraint(['%d-%d' % (row, col)
-                                         for row in range(9)])
+        csp.add_all_different_constraint(["%d-%d" % (row, col) for row in range(9)])
     for box_row in range(3):
         for box_col in range(3):
             cells = []
             for row in range(box_row * 3, (box_row + 1) * 3):
                 for col in range(box_col * 3, (box_col + 1) * 3):
-                    cells.append('%d-%d' % (row, col))
+                    cells.append("%d-%d" % (row, col))
             csp.add_all_different_constraint(cells)
 
     return csp
@@ -271,9 +310,14 @@ def print_sudoku_solution(solution):
     """
     for row in range(9):
         for col in range(9):
-            print(solution['%d-%d' % (row, col)][0], end=" "),
+            print(solution["%d-%d" % (row, col)][0], end=" ")
             if col == 2 or col == 5:
-                print('|', end=" "),
+                print("|", end=" ")
         print("")
         if row == 2 or row == 5:
-            print('------+-------+------')
+            print("------+-------+------")
+
+
+csp = create_sudoku_csp("veryhard.txt")
+solution = csp.backtracking_search()
+print_sudoku_solution(solution)
