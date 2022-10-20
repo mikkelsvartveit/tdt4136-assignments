@@ -18,6 +18,10 @@ class CSP:
         # the variable pair (i, j)
         self.constraints = {}
 
+        # Variables for analytics
+        self.backtrack_called = 0
+        self.backtrack_failed = 0
+
     def add_variable(self, name: str, domain: list):
         """Add a new variable to the CSP.
 
@@ -170,8 +174,11 @@ class CSP:
         iterations of the loop.
         """
 
+        self.backtrack_called += 1
+
         x = self.select_unassigned_variable(assignment)
 
+        # If no unassigned variable is found, we are done
         if not x:
             return assignment
 
@@ -180,7 +187,7 @@ class CSP:
 
             # Check if this value for x satisfies all constraints so far
             for y in self.constraints[x]:
-                # Only check constraint if y already has been assigned
+                # Only check constraint if y has already been assigned
                 if len(assignment[y]) == 1:
                     value_y = assignment[y][0]
 
@@ -194,10 +201,14 @@ class CSP:
 
             new_assignment = copy.deepcopy(assignment)
             new_assignment[x] = [value_x]
-            solution = self.backtrack(new_assignment)
-            if solution:
-                return solution
 
+            # Run AC-3 algorithm with the affected arcs
+            if self.inference(new_assignment, self.get_all_neighboring_arcs(x)):
+                solution = self.backtrack(new_assignment)
+                if solution:
+                    return solution
+
+        self.backtrack_failed += 1
         return None
 
     def select_unassigned_variable(self, assignment):
@@ -222,8 +233,13 @@ class CSP:
             arc = queue.pop(0)
             (i, j) = arc
             if self.revise(assignment, i, j):
+                if len(assignment[i]) == 0:
+                    return False
+
                 for arc in self.get_all_neighboring_arcs(i):
                     queue.append(arc)
+
+        return True
 
     def revise(self, assignment, i, j):
         """The function 'Revise' from the pseudocode in the textbook.
@@ -236,12 +252,16 @@ class CSP:
         """
 
         revised = False
-        for x in self.domains[i]:
-            for y in self.domains[j]:
+        for x in assignment[i]:
+            remove = True
+            for y in assignment[j]:
                 if (x, y) in self.constraints[i][j]:
+                    remove = False
                     break
-                self.domains[i].remove(x)
+
+            if remove:
                 revised = True
+                assignment[i].remove(x)
 
         return revised
 
@@ -278,6 +298,8 @@ def create_sudoku_csp(filename: str) -> CSP:
     CSP
         A CSP instance
     """
+    print(f"\nCSP for board {filename}:\n")
+
     csp = CSP()
     board = list(map(lambda x: x.strip(), open(filename, "r")))
 
@@ -318,6 +340,8 @@ def print_sudoku_solution(solution):
             print("------+-------+------")
 
 
-csp = create_sudoku_csp("veryhard.txt")
+csp = create_sudoku_csp("easy.txt")
 solution = csp.backtracking_search()
 print_sudoku_solution(solution)
+print(f"\nBacktrack called {csp.backtrack_called} times")
+print(f"Backtrack failed {csp.backtrack_failed} times")
